@@ -1,0 +1,262 @@
+<html>
+<head>
+<title>Metra Data</title>
+
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+
+<style>
+
+html {
+    background-color: #1a0e0e;
+    color: #e8e8e8;
+    padding: 40px;
+}
+
+body {
+    font: 14px "DejaVu Sans", "Bitstream Vera Sans", Helvetica, Verdana, sans-serif;
+    line-height: 1.65;
+    letter-spacing: 0.05em;
+    max-width: 72em;
+    position: relative;
+    margin: 15px auto;
+    padding: 0;
+}
+
+img {
+    border: none;
+}
+
+div {
+    color: #f3e8d6;
+}
+
+.run_detail {
+	padding: 1em;
+}
+
+.clickable_span {
+	text-decoration: underline;
+}
+
+/* jquery ui stuff -- */
+
+feedback { font-size: 1.4em; }
+  #selectable .ui-selecting { background: #FECA40; }
+  #selectable .ui-selected { background: #F39814; color: white; }
+  #selectable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
+  #selectable li { margin: 3px; padding: 0.4em; font-size: 1.4em; height: 18px; }
+
+
+</style>
+
+<script type="text/javascript">
+
+var METRA_LINES = null;
+var METRA_STATIONS = {};
+var LOAD_POLLING = false;
+
+function uimode(m) {
+    console.log("uimode(" + m + ")");
+    if (m != "showruns") {
+		LOAD_POLLING = false;
+	}
+	$(".uimode").hide();
+    $("#" + m).show();
+}
+
+function init_md() {
+    console.log("init_md()");
+	$("#runs_accordion").accordion({
+		heightStyle: "content"
+	});
+
+	$("#clickable_line").click(function(){uimode("selectline")});
+	$("#txt_dpt_station_id").click(function(){uimode("selectstations")});
+	$("#txt_arv_station_id").click(function(){uimode("selectstations")});
+
+    uimode("loading");
+    ui_selectline();
+}
+
+function handle_metralines() {
+    console.log("handle_metralines()");
+    var linesel = $("#input_line");
+    linesel.empty();
+    for (var line_id in METRA_LINES) {
+        if (METRA_LINES.hasOwnProperty(line_id)) {
+            linesel.append($('<option>', {value: line_id, text: METRA_LINES[line_id]}));
+        }
+    }
+    uimode("selectline");
+}
+
+function ui_selectline() {
+
+    if (METRA_LINES === null) {
+        $.getJSON("/api/metra", function(data) {
+            METRA_LINES = data.data;
+            handle_metralines();
+        });
+    } else {
+        handle_metralines();
+    }
+
+
+} 
+
+function handle_metrastations(line_id) {
+    console.log("handle_metrastations(" + line_id + ")");
+    var INPUTS = ["input_dpt_station", "input_arv_station"];
+    for (var j = 0; j < INPUTS.length; j++) {
+        var sid = INPUTS[j];    
+        console.log("sid = " + sid);
+        $("#" + sid).empty();
+        for (var i = 0; i < METRA_STATIONS[line_id].length; i++) {
+            var station = METRA_STATIONS[line_id][i];
+            $("#" + sid).append($('<option>', {value: station[0], text: station[1]}));
+        }
+    }
+    uimode("selectstations"); 
+}
+
+function get_line_id() {
+	return $('#input_line')[0].value;
+}
+function get_dpt_station_id() {
+	return $('#input_dpt_station')[0].value;
+}
+function get_arv_station_id() {
+	return $('#input_arv_station')[0].value;
+}
+
+function ui_selectstations() {
+    var line_id = get_line_id();
+    if (line_id) {
+        if (METRA_STATIONS[line_id]) {
+            handle_metrastations(line_id);
+        } else {
+            console.log("Fetching metra stations for " + line_id);
+            $.getJSON("/api/metra/" + line_id, function(data) {
+                METRA_STATIONS[line_id] = data.data;
+                handle_metrastations(line_id);
+            });
+        }
+    } else {
+        console.log("no line selected...");
+    }
+}
+
+function ui_showruns() {
+	uimode("loadingruns");
+	/* we're in polling mode; the UI should update every 30 seconds. */
+	LOAD_POLLING = true;
+	runs_poll();
+}
+
+function runs_poll() {
+	var line_id = get_line_id();
+	var dpt_station = get_dpt_station_id();
+	var arv_station = get_arv_station_id();
+	if (LOAD_POLLING) {
+		$.getJSON("/api/metra/" + line_id + "/" + dpt_station + "/" + arv_station, function(data) {
+			if (!LOAD_POLLING) {
+				return;
+			}
+
+			$('#txt_line_id').text(line_id);
+			$('#txt_dpt_station_id').text(dpt_station);
+			$('#txt_arv_station_id').text(arv_station);
+
+			/* Now, create the accordion */
+			var metadiv = $('#runs_meta');
+			var runsdiv = $('#runs_accordion');
+			metadiv.empty();
+			runsdiv.empty();
+
+			console.log("Emptied divs...");
+
+			// FIXME distinguish between no trains and error!
+			if (data.data && data.data.length > 0) {
+				console.log("Have train runs...");
+				metadiv.append($('<p>', {text: 'Upcoming trains as of ' + data.data[0].as_of_time}))
+				
+				var runs = data.data;
+				for (var i = 0; i < runs.length; i++) {
+					var run = runs[i];
+					
+					var dpt_time = run.scheduled_dpt_time;
+					if (run.estimated_dpt_time) {
+						dpt_time = run.estimated_dpt_time;
+					}
+
+					runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time}));
+					var paramode = $('<p>', {class: 'run_detail'});
+					paramode.text("whatever, dad");
+					runsdiv.append(paramode);
+				}
+				runsdiv.accordion("refresh");
+			} else {
+				console.log("Do not have train runs...");
+				metadiv.append($('<p>', {text: 'Either there are no trains or a technical issue has come up.'}))
+			}
+
+			uimode('showruns');
+		});
+		setTimeout(runs_poll, 30000);
+	}
+}
+
+</script>
+
+</head>
+<body onload="init_md()">
+
+<div id="loading" class="uimode" style="display: none;">
+    <h1>Metra Data</h1>
+    Loading Metra lines...
+</div>
+
+<div id="selectline" class="uimode" style="display: none;">
+    Select Line:<br />
+    <select name="input_line" id="input_line">
+    </select> <button onClick="ui_selectstations();">OK</button>
+</div>
+
+<div id="selectstations" class="uimode" style="display: none;">
+    <table>
+    <tr><td>Depart From:</td><td>Arrive At:</td></tr>
+    <tr>
+    <td><select name="input_dpt_station", id="input_dpt_station"></select></td>
+    <td><select name="input_arv_station", id="input_arv_station"></select></td>
+    </tr>
+    </table>
+
+    <button onClick="ui_showruns();">OK</button>
+
+</div>
+
+<div id="loadingruns" class="uimode" style="display: none;">
+	<h1>Loading Train Times...</h1>
+</div>
+
+<div id="showruns" class="uimode" style="display: none;">
+    <h1>
+		<span id="clickable_line" class="clickable_span">Metra 
+			<span id="txt_line_id"></span>
+		</span>:
+		<span id="txt_dpt_station_id" class="clickable_span"></span>
+		<span id="directional_arrow">&nbsp;&#8594;&nbsp;</span>
+		<span id="txt_arv_station_id" class="clickable_span"></span>
+	</h1>
+
+	<div id="runs_meta">
+	</div>
+	<div id="runs_accordion">
+	</div>
+</div>
+
+</body>
+</html>
