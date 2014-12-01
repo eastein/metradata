@@ -64,14 +64,18 @@ var METRA_STATIONS = {};
 var LOAD_POLLING = false;
 var POLLING_TIMER = null;
 
+function clear_poll() {
+	LOAD_POLLING = false;
+	if (POLLING_TIMER != null) {
+		clearTimeout(POLLING_TIMER);
+		POLLING_TIMER = null;
+	}
+}
+
 function uimode(m) {
     console.log("uimode(" + m + ")");
     if (m != "showruns") {
-		LOAD_POLLING = false;
-		if (POLLING_TIMER != null) {
-			clearTimeout(POLLING_TIMER);
-			POLLING_TIMER = null;
-		}
+		clear_poll();
 	}
 	$(".uimode").hide();
     $("#" + m).show();
@@ -89,7 +93,7 @@ function init_md() {
 	$("#clickable_line").click(function(){uimode("selectline")});
 	$("#txt_dpt_station_id").click(function(){uimode("selectstations")});
 	$("#txt_arv_station_id").click(function(){uimode("selectstations")});
-
+	$("#directional_arrow").click(stations_swap);
     uimode("loading");
     ui_selectline();
 }
@@ -143,6 +147,16 @@ function get_dpt_station_id() {
 }
 function get_arv_station_id() {
 	return $('#input_arv_station')[0].value;
+}
+
+function stations_swap() {
+	var s1 = get_dpt_station_id();
+	var s2 = get_arv_station_id();
+	$("#input_dpt_station").val(s2);
+	$("#input_arv_station").val(s1);
+	console.log("swapped values");
+	clear_poll();
+	ui_showruns();
 }
 
 function ui_selectstations() {
