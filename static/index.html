@@ -226,7 +226,13 @@ function runs_poll() {
 						ontime_status = "Delayed";
 					}
 
-					runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time + " (" + ontime_status + ")"}));
+
+					var ontime_suffix = "";
+					if (ontime_status != "") {
+						ontime_suffix = " (" + ontime_status + ")";
+					}
+
+					runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time + ontime_suffix}));
 					var paramode = $('<p>', {class: 'run_detail'});
 					var detail_tbl = $('<table>')
 					
