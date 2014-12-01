@@ -15,13 +15,18 @@ html {
     padding: 40px;
 }
 
+p.ui-accordion-content {
+	background: #1f1212 !important; /*jquery ui thinks it should get to decide colors, eh */
+	background-color: #1f1212;
+}
+
+p.ui-accordion-content td {
+	padding-left: 0.5em;
+}
+
 body {
     font: 14px "DejaVu Sans", "Bitstream Vera Sans", Helvetica, Verdana, sans-serif;
-    line-height: 1.65;
-    letter-spacing: 0.05em;
-    max-width: 72em;
     position: relative;
-    margin: 15px auto;
     padding: 0;
 }
 
@@ -57,11 +62,16 @@ feedback { font-size: 1.4em; }
 var METRA_LINES = null;
 var METRA_STATIONS = {};
 var LOAD_POLLING = false;
+var POLLING_TIMER = null;
 
 function uimode(m) {
     console.log("uimode(" + m + ")");
     if (m != "showruns") {
 		LOAD_POLLING = false;
+		if (POLLING_TIMER != null) {
+			clearTimeout(POLLING_TIMER);
+			POLLING_TIMER = null;
+		}
 	}
 	$(".uimode").hide();
     $("#" + m).show();
@@ -69,6 +79,9 @@ function uimode(m) {
 
 function init_md() {
     console.log("init_md()");
+	
+	$("#input_line").change(ui_selectstations);
+	
 	$("#runs_accordion").accordion({
 		heightStyle: "content"
 	});
@@ -191,13 +204,62 @@ function runs_poll() {
 					if (run.estimated_dpt_time) {
 						dpt_time = run.estimated_dpt_time;
 					}
+					
+					var ontime_status = "";
+					if (run.on_time === true) {
+						ontime_status = "On Time";
+					} else if (run.on_time === false) {
+						ontime_status = "Delayed";
+					}
 
-					runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time}));
+					runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time + " (" + ontime_status + ")"}));
 					var paramode = $('<p>', {class: 'run_detail'});
-					paramode.text("whatever, dad");
+					var detail_tbl = $('<table>')
+					
+					var gps_status = "may or may not";
+					if (run.gps === true) {
+						gps_status = 'is';
+					} else if (run.gps === false) {
+						gps_status = 'is not';
+					}
+
+					var enroute_status = "";
+					if (run.en_route === true) {
+						enroute_status = "This train is en route.";
+					} else if (run.en_route === false) {
+						enroute_status = "This train has not yet begun its run.";
+					}
+
+					/* headings */
+					var headings = $('<tr>');
+					headings.append($('<th>', {text: ''}));
+					headings.append($('<th>', {text: 'Departure'}));
+					headings.append($('<th>', {text: 'Arrival'}));
+					headings.append($('<th>', {text: ''}));
+					headings.append($('<td>', {text: "This train is " + ontime_status + "."}));
+					detail_tbl.append(headings);
+
+					var estimates = $('<tr>');
+					estimates.append($('<th>', {text: 'Predicted'}));
+					estimates.append($('<td>', {text: run.estimated_dpt_time}))
+					estimates.append($('<td>', {text: run.estimated_arv_time}))
+					estimates.append($('<td>', {text: ''}));
+					estimates.append($('<td>', {text: 'GPS data ' + gps_status + ' being received.'}));
+					var schedules = $('<tr>');
+					schedules.append($('<th>', {text: 'Planned'}));
+					schedules.append($('<td>', {text: run.scheduled_dpt_time}))
+					schedules.append($('<td>', {text: run.scheduled_arv_time}))
+					schedules.append($('<td>', {text: ''}));
+					schedules.append($('<td>', {text: enroute_status}));
+
+					detail_tbl.append(estimates);
+					detail_tbl.append(schedules);
+
+					paramode.append(detail_tbl);
 					runsdiv.append(paramode);
 				}
 				runsdiv.accordion("refresh");
+				runsdiv.accordion("option", "active", 2);
 			} else {
 				console.log("Do not have train runs...");
 				metadiv.append($('<p>', {text: 'Either there are no trains or a technical issue has come up.'}))
@@ -205,7 +267,7 @@ function runs_poll() {
 
 			uimode('showruns');
 		});
-		setTimeout(runs_poll, 30000);
+		POLLING_TIMER = setTimeout(runs_poll, 30000);
 	}
 }
 
@@ -220,14 +282,14 @@ function runs_poll() {
 </div>
 
 <div id="selectline" class="uimode" style="display: none;">
-    Select Line:<br />
+    <h1>Select Line</h1>
     <select name="input_line" id="input_line">
-    </select> <button onClick="ui_selectstations();">OK</button>
+    </select>
 </div>
 
 <div id="selectstations" class="uimode" style="display: none;">
     <table>
-    <tr><td>Depart From:</td><td>Arrive At:</td></tr>
+    <tr><td><h1 style="padding-right: 0.5em;" >Depart From</h1></td><td><h1>Arrive At</h1></td></tr>
     <tr>
     <td><select name="input_dpt_station", id="input_dpt_station"></select></td>
     <td><select name="input_arv_station", id="input_arv_station"></select></td>
