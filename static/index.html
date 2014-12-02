@@ -8,30 +8,48 @@
 <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
 <script src="/static/js/jquery.cookie-1.4.1.js"></script>
-
+<script src="/static/js/viewportSize.js"></script>
 <style>
 
 html {
     background-color: #1a0e0e;
     color: #e8e8e8;
-    padding: 40px;
+    padding: 11px;
 }
 
 table {
     color: #e8e8e8;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 p.ui-accordion-content {
-	background: #1f1212 !important; /*jquery ui thinks it should get to decide colors, eh */
-	background-color: #1f1212;
+    background: #1f1212 !important; /*jquery ui thinks it should get to decide colors, eh */
+    background-color: #1f1212;
 }
 
 p.ui-accordion-content td {
-	padding-left: 0.5em;
+    padding-left: 0.3em;
 }
 
+select {
+    font-size: 1.6em;
+}
+button {
+    font-size: 1.6em;
+}
+
+h1 {
+    font-size: 2.1em;
+}
+h2 {
+    font-size: 1.87em;
+}
+h3 {
+    font-size: 1.73em;
+}
 body {
-    font: 14px "DejaVu Sans", "Bitstream Vera Sans", Helvetica, Verdana, sans-serif;
+    font: 1em "DejaVu Sans", "Bitstream Vera Sans", Helvetica, Verdana, sans-serif;
     position: relative;
     padding: 0;
 }
@@ -45,21 +63,40 @@ div {
 }
 
 .run_detail {
-	padding: 1em;
+    padding: 3pt;
+    margin: 0;
 }
 
 .clickable_span {
-	text-decoration: underline;
+    text-decoration: underline;
 }
 
-/* jquery ui stuff -- */
+.ui-accordion .ui-accordion-content {
+    padding: 2% !important; /* jquery accordion you prima donna YOU ONLY HAVE 3 MINUTES ON STAGE, get down from there. */
+}
 
-feedback { font-size: 1.4em; }
-  #selectable .ui-selecting { background: #FECA40; }
-  #selectable .ui-selected { background: #F39814; color: white; }
-  #selectable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
-  #selectable li { margin: 3px; padding: 0.4em; font-size: 1.4em; height: 18px; }
-
+.left {
+    float: left;
+    width: 48%;
+    margin-left: 0%;
+}
+.right {
+    float: right;
+    width: 48%;
+    margin-right: 0%;
+}
+.group:after {
+    content:"";
+    display: table;
+    clear: both;
+}
+@media screen and (max-width: 900px) {
+    .left, 
+    .right {
+        float: none;
+        width: auto;
+    }
+}
 
 </style>
 
@@ -74,71 +111,81 @@ var EXPLICIT = true;
 
 
 function clear_poll() {
-	LOAD_POLLING = false;
-	if (POLLING_TIMER != null) {
-		clearTimeout(POLLING_TIMER);
-		POLLING_TIMER = null;
-	}
+    LOAD_POLLING = false;
+    if (POLLING_TIMER != null) {
+        clearTimeout(POLLING_TIMER);
+        POLLING_TIMER = null;
+    }
 }
 
 function uimode(m) {
     console.log("uimode(" + m + ")");
     
-	if (m != "showruns") {
-		console.log("in uimode, clearing poll...");
-		clear_poll();
-		if ((m == "selectline") || (m == "selectstations")) {
-			state_flush();
-		}
-	}
-	
-	$(".uimode").hide();
+    if (m != "showruns") {
+        console.log("in uimode, clearing poll...");
+        clear_poll();
+        if ((m == "selectline") || (m == "selectstations")) {
+            state_flush();
+        }
+    }
+    
+    $(".uimode").hide();
     $("#" + m).show();
 }
 
 function state_save() {
-	/* this really likely doesn't work right if the user has more than one tab open. Do something about that? */
-	var line_id = get_line_id();
-	var dpt_station = get_dpt_station_id();
-	var arv_station = get_arv_station_id();
+    /* this really likely doesn't work right if the user has more than one tab open. Do something about that? */
+    var line_id = get_line_id();
+    var dpt_station = get_dpt_station_id();
+    var arv_station = get_arv_station_id();
 
-	/* save all of the settings in cookies - we'll look at these cookies upon page load to set a few things up. */
-	$.cookie("md_line", line_id, {expires: COOKIE_EXPIRY});
-	$.cookie("md_dpt_station", dpt_station, {expires: COOKIE_EXPIRY});
-	$.cookie("md_arv_station", arv_station, {expires: COOKIE_EXPIRY});
-	console.log("stored cookies for line & stations");
+    /* save all of the settings in cookies - we'll look at these cookies upon page load to set a few things up. */
+    $.cookie("md_line", line_id, {expires: COOKIE_EXPIRY});
+    $.cookie("md_dpt_station", dpt_station, {expires: COOKIE_EXPIRY});
+    $.cookie("md_arv_station", arv_station, {expires: COOKIE_EXPIRY});
+    console.log("stored cookies for line & stations");
 }
 
 function state_flush() {
-	console.log("deleting all cookies");
-	$.removeCookie("md_line");
-	$.removeCookie("md_dpt_station");
-	$.removeCookie("md_arv_station");
+    console.log("deleting all cookies");
+    $.removeCookie("md_line");
+    $.removeCookie("md_dpt_station");
+    $.removeCookie("md_arv_station");
+}
+
+function responsive_fontsize() {
+    $("#page_container").css("font-size", Math.max(20, Math.round(viewportSize.getWidth() / 50.0)).toString() + "px");
 }
 
 function init_md() {
     console.log("init_md()");
 
-	var line_cookie = $.cookie('md_line');
-
-	if (line_cookie) {
-		EXPLICIT = false;
-	}
-
-	/* if the line dropdown selection gets changed, go to the select stations mode. */
-	$("#input_line").change(ui_selectstations);
-	
-	/* set up the runs_accordion div to hold the runs in the jquery ui accordion widget */
-	$("#runs_accordion").accordion({
-		heightStyle: "content"
-	});
-
-	/* this is bindings for clickability in the runs view - to change the stations, swap stations, or change lines */
-	$("#clickable_line").click(function(){uimode("selectline")});
-	$("#txt_dpt_station_id").click(function(){uimode("selectstations")});
-	$("#txt_arv_station_id").click(function(){uimode("selectstations")});
-	$("#directional_arrow").click(stations_swap);
     uimode("loading");
+
+    // pick out a fontsize that is appropriate. All CSS should be in em so this will work out.. hopefully.
+    responsive_fontsize();
+    $(window).resize(responsive_fontsize);
+
+    // if the line is in a cookie, then we should try to load the current preferences automatically.
+    var line_cookie = $.cookie('md_line');
+    if (line_cookie) {
+        EXPLICIT = false;
+    }
+
+    /* if the line dropdown selection gets changed, go to the select stations mode. */
+    $("#input_line").change(ui_selectstations);
+    
+    /* set up the runs_accordion div to hold the runs in the jquery ui accordion widget */
+    $("#runs_accordion").accordion({
+        heightStyle: "content"
+    });
+
+    /* this is bindings for clickability in the runs view - to change the stations, swap stations, or change lines */
+    $("#clickable_line").click(function(){uimode("selectline")});
+    $("#txt_dpt_station_id").click(function(){uimode("selectstations")});
+    $("#txt_arv_station_id").click(function(){uimode("selectstations")});
+    $("#directional_arrow").click(stations_swap);
+
     ui_selectline();
 }
 
@@ -151,29 +198,29 @@ function handle_metralines() {
             linesel.append($('<option>', {value: line_id, text: METRA_LINES[line_id]}));
         }
     }
-	// only show UI that we just built if the user is in control
-	var automatic = false;
-	if (!EXPLICIT) {
-		var stored_line_id = $.cookie('md_line');
-		if (stored_line_id) {
-			// ok we have one..
-			if (METRA_LINES.hasOwnProperty(stored_line_id)) {
-				// and it still exists as a line at the API
-				set_line_id(stored_line_id);
-				automatic = true;
-			}
-		}
-	}
-	
-	if (automatic) {
-		// progress onward to selecting the stations...
-		ui_selectstations();
-	} else {
-		// for whatever reason, we didn't automatically fill this in.
-		// make the user do it.
-		EXPLICIT = true; // we aren't doing this automatically anymore because we failed.
-		uimode("selectline");
-	}
+    // only show UI that we just built if the user is in control
+    var automatic = false;
+    if (!EXPLICIT) {
+        var stored_line_id = $.cookie('md_line');
+        if (stored_line_id) {
+            // ok we have one..
+            if (METRA_LINES.hasOwnProperty(stored_line_id)) {
+                // and it still exists as a line at the API
+                set_line_id(stored_line_id);
+                automatic = true;
+            }
+        }
+    }
+    
+    if (automatic) {
+        // progress onward to selecting the stations...
+        ui_selectstations();
+    } else {
+        // for whatever reason, we didn't automatically fill this in.
+        // make the user do it.
+        EXPLICIT = true; // we aren't doing this automatically anymore because we failed.
+        uimode("selectline");
+    }
 }
 
 function ui_selectline() {
@@ -203,58 +250,58 @@ function handle_metrastations(line_id) {
         }
     }
 
-	var automatic = false;
-	if (!EXPLICIT) {
-		// we're trying to do this automatically. Let's get the stations from cookies...
+    var automatic = false;
+    if (!EXPLICIT) {
+        // we're trying to do this automatically. Let's get the stations from cookies...
 
-		var stored_dpt = $.cookie('md_dpt_station');
-		var stored_arv = $.cookie('md_arv_station');
+        var stored_dpt = $.cookie('md_dpt_station');
+        var stored_arv = $.cookie('md_arv_station');
 
-		if (stored_dpt && stored_arv) {
-			// we do have the cookies! Check if they're valid.
-			// actually TODO check if they're valid I feel pretty bored with that idea right now.
+        if (stored_dpt && stored_arv) {
+            // we do have the cookies! Check if they're valid.
+            // actually TODO check if they're valid I feel pretty bored with that idea right now.
 
-			$("#input_dpt_station").val(stored_dpt);
-			$("#input_arv_station").val(stored_arv);
+            $("#input_dpt_station").val(stored_dpt);
+            $("#input_arv_station").val(stored_arv);
 
-			automatic = true;
-		}
-	}
+            automatic = true;
+        }
+    }
 
-	if (automatic) {
-		ui_showruns();
-	} else {
-		EXPLICIT = true; // if we were going automatic before, we sure aren't now
-		uimode("selectstations"); 
-	}
+    if (automatic) {
+        ui_showruns();
+    } else {
+        EXPLICIT = true; // if we were going automatic before, we sure aren't now
+        uimode("selectstations"); 
+    }
 }
 
 function get_line_id() {
-	return $('#input_line')[0].value;
+    return $('#input_line')[0].value;
 }
 function get_dpt_station_id() {
-	return $('#input_dpt_station')[0].value;
+    return $('#input_dpt_station')[0].value;
 }
 function get_arv_station_id() {
-	return $('#input_arv_station')[0].value;
+    return $('#input_arv_station')[0].value;
 }
 
 function set_line_id(line_id) {
-	$("#input_line").val(line_id);
+    $("#input_line").val(line_id);
 }
 
 function set_station_ids(dpt_id, arv_id) {
-	$("#input_dpt_station").val(dpt_id);
-	$("#input_arv_station").val(arv_id);
+    $("#input_dpt_station").val(dpt_id);
+    $("#input_arv_station").val(arv_id);
 }
 
 function stations_swap() {
-	var s1 = get_dpt_station_id();
-	var s2 = get_arv_station_id();
-	set_station_ids(s2, s1);
-	console.log("swapped values");
-	clear_poll();
-	ui_showruns();
+    var s1 = get_dpt_station_id();
+    var s2 = get_arv_station_id();
+    set_station_ids(s2, s1);
+    console.log("swapped values");
+    clear_poll();
+    ui_showruns();
 }
 
 function ui_selectstations() {
@@ -275,124 +322,128 @@ function ui_selectstations() {
 }
 
 function ui_showruns() {
-	uimode("loadingruns");
+    uimode("loadingruns");
 
-	state_save();
-	
-	// we're in explicit acting mode; the user is in control
-	EXPLICIT = true;
+    state_save();
+    
+    // we're in explicit acting mode; the user is in control
+    EXPLICIT = true;
 
-	/* we're in polling mode; the UI should update every 30 seconds. */
-	LOAD_POLLING = true;
-	runs_poll();
+    /* we're in polling mode; the UI should update every 30 seconds. */
+    LOAD_POLLING = true;
+    runs_poll();
 }
 
 function runs_poll() {
-	var line_id = get_line_id();
-	var dpt_station = get_dpt_station_id();
-	var arv_station = get_arv_station_id();
-	if (LOAD_POLLING) {
-		$.getJSON("/api/metra/" + line_id + "/" + dpt_station + "/" + arv_station, function(data) {
-			if (!LOAD_POLLING) {
-				return;
-			}
+    var line_id = get_line_id();
+    var dpt_station = get_dpt_station_id();
+    var arv_station = get_arv_station_id();
+    if (LOAD_POLLING) {
+        $.getJSON("/api/metra/" + line_id + "/" + dpt_station + "/" + arv_station, function(data) {
+            if (!LOAD_POLLING) {
+                return;
+            }
 
-			$('#txt_line_id').text(line_id);
-			$('#txt_dpt_station_id').text(dpt_station);
-			$('#txt_arv_station_id').text(arv_station);
+            $('#txt_line_id').text(line_id);
+            $('#txt_dpt_station_id').text(dpt_station);
+            $('#txt_arv_station_id').text(arv_station);
 
-			/* Now, create the accordion */
-			var metadiv = $('#runs_meta');
-			var runsdiv = $('#runs_accordion');
-			metadiv.empty();
-			runsdiv.empty();
+            /* Now, create the accordion */
+            var metadiv = $('#runs_meta');
+            var runsdiv = $('#runs_accordion');
+            metadiv.empty();
+            runsdiv.empty();
 
-			console.log("Emptied divs...");
+            console.log("Emptied divs...");
 
-			// FIXME distinguish between no trains and error!
-			if (data.data && data.data.length > 0) {
-				console.log("Have train runs...");
-				metadiv.append($('<p>', {text: 'Upcoming trains as of ' + data.data[0].as_of_time}))
-				
-				var runs = data.data;
-				for (var i = 0; i < runs.length; i++) {
-					var run = runs[i];
-					
-					var dpt_time = run.scheduled_dpt_time;
-					if (run.estimated_dpt_time) {
-						dpt_time = run.estimated_dpt_time;
-					}
-					
-					var ontime_status = "";
-					if (run.on_time === true) {
-						ontime_status = "On Time";
-					} else if (run.on_time === false) {
-						ontime_status = "Delayed";
-					}
+            // FIXME distinguish between no trains and error!
+            if (data.data && data.data.length > 0) {
+                console.log("Have train runs...");
+                metadiv.append($('<p>', {text: 'Upcoming trains as of ' + data.data[0].as_of_time}))
+                
+                var runs = data.data;
+                for (var i = 0; i < runs.length; i++) {
+                    var run = runs[i];
+                    
+                    var dpt_time = run.scheduled_dpt_time;
+                    if (run.estimated_dpt_time) {
+                        dpt_time = run.estimated_dpt_time;
+                    }
+                    
+                    var ontime_status = "";
+                    if (run.on_time === true) {
+                        ontime_status = "On Time";
+                    } else if (run.on_time === false) {
+                        ontime_status = "Delayed";
+                    }
 
 
-					var ontime_suffix = "";
-					if (ontime_status != "") {
-						ontime_suffix = " (" + ontime_status + ")";
-					}
+                    var ontime_suffix = "";
+                    if (ontime_status != "") {
+                        ontime_suffix = " (" + ontime_status + ")";
+                    }
 
-					runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time + ontime_suffix}));
-					var paramode = $('<p>', {class: 'run_detail'});
-					var detail_tbl = $('<table>')
-					
-					var gps_status = "may or may not";
-					if (run.gps === true) {
-						gps_status = 'is';
-					} else if (run.gps === false) {
-						gps_status = 'is not';
-					}
+                    runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time + ontime_suffix}));
+                    var paramode = $('<p>', {class: 'run_detail'});
+                    var groupdiv = $('<div>', {class: 'group'});
+                    paramode.append(groupdiv);
+                    var leftdiv = $('<div>', {class: 'left'});
+                    var rightdiv = $('<div>', {class: 'right'});
+                    groupdiv.append(leftdiv);
+                    groupdiv.append(rightdiv);
+                    var detail_tbl = $('<table>')
+                    
+                    var gps_status = "may or may not";
+                    if (run.gps === true) {
+                        gps_status = 'is';
+                    } else if (run.gps === false) {
+                        gps_status = 'is not';
+                    }
 
-					var enroute_status = "";
-					if (run.en_route === true) {
-						enroute_status = "This train is en route.";
-					} else if (run.en_route === false) {
-						enroute_status = "This train has not yet begun its run.";
-					}
+                    var enroute_status = "";
+                    if (run.en_route === true) {
+                        enroute_status = "This train is en route.";
+                    } else if (run.en_route === false) {
+                        enroute_status = "This train has not yet begun its run.";
+                    }
 
-					/* headings */
-					var headings = $('<tr>');
-					headings.append($('<th>', {text: ''}));
-					headings.append($('<th>', {text: run.dpt_station_id}));
-					headings.append($('<th>', {text: run.arv_station_id}));
-					headings.append($('<th>', {text: ''}));
-					headings.append($('<td>', {text: "This train is " + ontime_status + "."}));
-					detail_tbl.append(headings);
+                    /* headings */
+                    var headings = $('<tr>');
+                    headings.append($('<th>', {text: ''}));
+                    headings.append($('<th>', {text: run.dpt_station_id}));
+                    headings.append($('<th>', {text: run.arv_station_id}));
+                    detail_tbl.append(headings);
 
-					var estimates = $('<tr>');
-					estimates.append($('<th>', {text: 'Predicted'}));
-					estimates.append($('<td>', {text: run.estimated_dpt_time}))
-					estimates.append($('<td>', {text: run.estimated_arv_time}))
-					estimates.append($('<td>', {text: ''}));
-					estimates.append($('<td>', {text: 'GPS data ' + gps_status + ' being received.'}));
-					var schedules = $('<tr>');
-					schedules.append($('<th>', {text: 'Planned'}));
-					schedules.append($('<td>', {text: run.scheduled_dpt_time}))
-					schedules.append($('<td>', {text: run.scheduled_arv_time}))
-					schedules.append($('<td>', {text: ''}));
-					schedules.append($('<td>', {text: enroute_status}));
+                    var estimates = $('<tr>');
+                    estimates.append($('<th>', {text: 'Predicted'}));
+                    estimates.append($('<td>', {text: run.estimated_dpt_time}))
+                    estimates.append($('<td>', {text: run.estimated_arv_time}))
+                    
+                    var schedules = $('<tr>');
+                    schedules.append($('<th>', {text: 'Planned'}));
+                    schedules.append($('<td>', {text: run.scheduled_dpt_time}))
+                    schedules.append($('<td>', {text: run.scheduled_arv_time}))
 
-					detail_tbl.append(estimates);
-					detail_tbl.append(schedules);
+                    detail_tbl.append(estimates);
+                    detail_tbl.append(schedules);
 
-					paramode.append(detail_tbl);
-					runsdiv.append(paramode);
-				}
-				runsdiv.accordion("refresh");
-				runsdiv.accordion("option", "active", 0);
-			} else {
-				console.log("Do not have train runs...");
-				metadiv.append($('<p>', {text: 'Either there are no trains or a technical issue has come up.'}))
-			}
+                    leftdiv.append(detail_tbl);
+                    
+                    rightdiv.append($('<p>', {text: "This train is " + ontime_status + '. GPS data ' + gps_status + ' being received. ' + enroute_status}));
 
-			uimode('showruns');
-		});
-		POLLING_TIMER = setTimeout(runs_poll, 30000);
-	}
+                    runsdiv.append(paramode);
+                }
+                runsdiv.accordion("refresh");
+                runsdiv.accordion("option", "active", 0);
+            } else {
+                console.log("Do not have train runs...");
+                metadiv.append($('<p>', {text: 'Either there are no trains or a technical issue has come up.'}))
+            }
+
+            uimode('showruns');
+        });
+        POLLING_TIMER = setTimeout(runs_poll, 30000);
+    }
 }
 
 </script>
@@ -400,49 +451,59 @@ function runs_poll() {
 </head>
 <body onload="init_md()">
 
-<div id="loading" class="uimode" style="display: none;">
-    <h1>Metra Data</h1>
-    Loading Metra lines...
-</div>
+<div id="page_container" style="width: 100%">
+    <div id="loading" class="uimode" style="display: none;">
+        <h1>Metra Data</h1>
+        Loading Metra lines...
+    </div>
 
-<div id="selectline" class="uimode" style="display: none;">
-    <h1>Select Line</h1>
-    <select name="input_line" id="input_line">
-    </select>
-    <button onClick="ui_selectstations();">OK</button>
-</div>
+    <div id="selectline" class="uimode" style="display: none;">
+        <h1>Select Line</h1>
+        <select name="input_line" id="input_line">
+        </select>
+        <button onClick="ui_selectstations();">OK</button>
+    </div>
 
-<div id="selectstations" class="uimode" style="display: none;">
-    <table>
-    <tr><td><h1 style="padding-right: 0.5em;" >Depart From</h1></td><td><h1>Arrive At</h1></td></tr>
-    <tr>
-    <td><select name="input_dpt_station" id="input_dpt_station"></select></td>
-    <td><select name="input_arv_station" id="input_arv_station"></select></td>
-    </tr>
-    </table>
+    <div id="selectstations" class="uimode" style="display: none;">
+        <div class="group">
+	
+        <div class="left">
+        <h1>Depart From</h1>
+        <select name="input_dpt_station" id="input_dpt_station"></select>
+        </div>
 
-    <button onClick="ui_showruns();">OK</button>
+        <div class="right">
+        <h1>Arrive At</h1>
+        <select name="input_arv_station" id="input_arv_station"></select>
+        </div>
 
-</div>
 
-<div id="loadingruns" class="uimode" style="display: none;">
-	<h1>Loading Train Times...</h1>
-</div>
+        
+        </div>
 
-<div id="showruns" class="uimode" style="display: none;">
-	<h1>
-		<span id="clickable_line" class="clickable_span">Metra 
-			<span id="txt_line_id"></span>
-		</span>:
-		<span id="txt_dpt_station_id" class="clickable_span"></span>
-		<span id="directional_arrow">&nbsp;&#8594;&nbsp;</span>
-		<span id="txt_arv_station_id" class="clickable_span"></span>
-	</h1>
+        <br /><button onClick="ui_showruns();">OK</button>
 
-	<div id="runs_meta">
-	</div>
-	<div id="runs_accordion">
-	</div>
+    </div>
+
+    <div id="loadingruns" class="uimode" style="display: none;">
+        <h1>Loading Train Times...</h1>
+    </div>
+
+    <div id="showruns" class="uimode" style="display: none;">
+        <h1>
+        <span id="clickable_line" class="clickable_span">Metra 
+            <span id="txt_line_id"></span>
+        </span>:
+        <span id="txt_dpt_station_id" class="clickable_span"></span>
+        <span id="directional_arrow">&nbsp;&#8594;&nbsp;</span>
+        <span id="txt_arv_station_id" class="clickable_span"></span>
+        </h1>
+
+        <div id="runs_meta">
+        </div>
+        <div id="runs_accordion">
+        </div>
+    </div>
 </div>
 
 </body>
