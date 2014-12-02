@@ -378,7 +378,7 @@ function runs_poll() {
 					runsdiv.append(paramode);
 				}
 				runsdiv.accordion("refresh");
-				runsdiv.accordion("option", "active", 2);
+				runsdiv.accordion("option", "active", 0);
 			} else {
 				console.log("Do not have train runs...");
 				metadiv.append($('<p>', {text: 'Either there are no trains or a technical issue has come up.'}))
