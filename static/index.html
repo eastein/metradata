@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>Metra Data</title>
@@ -14,6 +15,10 @@ html {
     background-color: #1a0e0e;
     color: #e8e8e8;
     padding: 40px;
+}
+
+table {
+    color: #e8e8e8;
 }
 
 p.ui-accordion-content {
@@ -352,8 +357,8 @@ function runs_poll() {
 					/* headings */
 					var headings = $('<tr>');
 					headings.append($('<th>', {text: ''}));
-					headings.append($('<th>', {text: 'Departure'}));
-					headings.append($('<th>', {text: 'Arrival'}));
+					headings.append($('<th>', {text: run.dpt_station_id}));
+					headings.append($('<th>', {text: run.arv_station_id}));
 					headings.append($('<th>', {text: ''}));
 					headings.append($('<td>', {text: "This train is " + ontime_status + "."}));
 					detail_tbl.append(headings);
@@ -411,8 +416,8 @@ function runs_poll() {
     <table>
     <tr><td><h1 style="padding-right: 0.5em;" >Depart From</h1></td><td><h1>Arrive At</h1></td></tr>
     <tr>
-    <td><select name="input_dpt_station", id="input_dpt_station"></select></td>
-    <td><select name="input_arv_station", id="input_arv_station"></select></td>
+    <td><select name="input_dpt_station" id="input_dpt_station"></select></td>
+    <td><select name="input_arv_station" id="input_arv_station"></select></td>
     </tr>
     </table>
 
@@ -425,7 +430,7 @@ function runs_poll() {
 </div>
 
 <div id="showruns" class="uimode" style="display: none;">
-    <h1>
+	<h1>
 		<span id="clickable_line" class="clickable_span">Metra 
 			<span id="txt_line_id"></span>
 		</span>:
