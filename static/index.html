@@ -6,6 +6,7 @@
 <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+<script src="/static/js/jquery.cookie-1.4.1.js"></script>
 
 <style>
 
@@ -63,6 +64,9 @@ var METRA_LINES = null;
 var METRA_STATIONS = {};
 var LOAD_POLLING = false;
 var POLLING_TIMER = null;
+var COOKIE_EXPIRY = 365 * 30; /* 30 years ought to do it! */
+var EXPLICIT = true;
+
 
 function clear_poll() {
 	LOAD_POLLING = false;
@@ -74,22 +78,57 @@ function clear_poll() {
 
 function uimode(m) {
     console.log("uimode(" + m + ")");
-    if (m != "showruns") {
+    
+	if (m != "showruns") {
+		console.log("in uimode, clearing poll...");
 		clear_poll();
+		if ((m == "selectline") || (m == "selectstations")) {
+			state_flush();
+		}
 	}
+	
 	$(".uimode").hide();
     $("#" + m).show();
 }
 
+function state_save() {
+	/* this really likely doesn't work right if the user has more than one tab open. Do something about that? */
+	var line_id = get_line_id();
+	var dpt_station = get_dpt_station_id();
+	var arv_station = get_arv_station_id();
+
+	/* save all of the settings in cookies - we'll look at these cookies upon page load to set a few things up. */
+	$.cookie("md_line", line_id, {expires: COOKIE_EXPIRY});
+	$.cookie("md_dpt_station", dpt_station, {expires: COOKIE_EXPIRY});
+	$.cookie("md_arv_station", arv_station, {expires: COOKIE_EXPIRY});
+	console.log("stored cookies for line & stations");
+}
+
+function state_flush() {
+	console.log("deleting all cookies");
+	$.removeCookie("md_line");
+	$.removeCookie("md_dpt_station");
+	$.removeCookie("md_arv_station");
+}
+
 function init_md() {
     console.log("init_md()");
-	
+
+	var line_cookie = $.cookie('md_line');
+
+	if (line_cookie) {
+		EXPLICIT = false;
+	}
+
+	/* if the line dropdown selection gets changed, go to the select stations mode. */
 	$("#input_line").change(ui_selectstations);
 	
+	/* set up the runs_accordion div to hold the runs in the jquery ui accordion widget */
 	$("#runs_accordion").accordion({
 		heightStyle: "content"
 	});
 
+	/* this is bindings for clickability in the runs view - to change the stations, swap stations, or change lines */
 	$("#clickable_line").click(function(){uimode("selectline")});
 	$("#txt_dpt_station_id").click(function(){uimode("selectstations")});
 	$("#txt_arv_station_id").click(function(){uimode("selectstations")});
@@ -107,7 +146,29 @@ function handle_metralines() {
             linesel.append($('<option>', {value: line_id, text: METRA_LINES[line_id]}));
         }
     }
-    uimode("selectline");
+	// only show UI that we just built if the user is in control
+	var automatic = false;
+	if (!EXPLICIT) {
+		var stored_line_id = $.cookie('md_line');
+		if (stored_line_id) {
+			// ok we have one..
+			if (METRA_LINES.hasOwnProperty(stored_line_id)) {
+				// and it still exists as a line at the API
+				set_line_id(stored_line_id);
+				automatic = true;
+			}
+		}
+	}
+	
+	if (automatic) {
+		// progress onward to selecting the stations...
+		ui_selectstations();
+	} else {
+		// for whatever reason, we didn't automatically fill this in.
+		// make the user do it.
+		EXPLICIT = true; // we aren't doing this automatically anymore because we failed.
+		uimode("selectline");
+	}
 }
 
 function ui_selectline() {
@@ -136,7 +197,31 @@ function handle_metrastations(line_id) {
             $("#" + sid).append($('<option>', {value: station[0], text: station[1]}));
         }
     }
-    uimode("selectstations"); 
+
+	var automatic = false;
+	if (!EXPLICIT) {
+		// we're trying to do this automatically. Let's get the stations from cookies...
+
+		var stored_dpt = $.cookie('md_dpt_station');
+		var stored_arv = $.cookie('md_arv_station');
+
+		if (stored_dpt && stored_arv) {
+			// we do have the cookies! Check if they're valid.
+			// actually TODO check if they're valid I feel pretty bored with that idea right now.
+
+			$("#input_dpt_station").val(stored_dpt);
+			$("#input_arv_station").val(stored_arv);
+
+			automatic = true;
+		}
+	}
+
+	if (automatic) {
+		ui_showruns();
+	} else {
+		EXPLICIT = true; // if we were going automatic before, we sure aren't now
+		uimode("selectstations"); 
+	}
 }
 
 function get_line_id() {
@@ -149,11 +234,19 @@ function get_arv_station_id() {
 	return $('#input_arv_station')[0].value;
 }
 
+function set_line_id(line_id) {
+	$("#input_line").val(line_id);
+}
+
+function set_station_ids(dpt_id, arv_id) {
+	$("#input_dpt_station").val(dpt_id);
+	$("#input_arv_station").val(arv_id);
+}
+
 function stations_swap() {
 	var s1 = get_dpt_station_id();
 	var s2 = get_arv_station_id();
-	$("#input_dpt_station").val(s2);
-	$("#input_arv_station").val(s1);
+	set_station_ids(s2, s1);
 	console.log("swapped values");
 	clear_poll();
 	ui_showruns();
@@ -178,6 +271,12 @@ function ui_selectstations() {
 
 function ui_showruns() {
 	uimode("loadingruns");
+
+	state_save();
+	
+	// we're in explicit acting mode; the user is in control
+	EXPLICIT = true;
+
 	/* we're in polling mode; the UI should update every 30 seconds. */
 	LOAD_POLLING = true;
 	runs_poll();
@@ -305,6 +404,7 @@ function runs_poll() {
     <h1>Select Line</h1>
     <select name="input_line" id="input_line">
     </select>
+    <button onClick="ui_selectstations();">OK</button>
 </div>
 
 <div id="selectstations" class="uimode" style="display: none;">
