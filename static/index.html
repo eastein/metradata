@@ -375,7 +375,9 @@ function runs_poll() {
                         ontime_status = "On Time";
                     } else if (run.on_time === false) {
                         ontime_status = "Delayed";
-                    }
+                    } else {
+						ontime_status = "Departing";
+					}
 
 
                     var ontime_suffix = "";
