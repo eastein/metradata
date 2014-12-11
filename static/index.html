@@ -108,7 +108,7 @@ var LOAD_POLLING = false;
 var POLLING_TIMER = null;
 var COOKIE_EXPIRY = 365 * 30; /* 30 years ought to do it! */
 var EXPLICIT = true;
-
+var USER_ID = null;
 
 function clear_poll() {
     LOAD_POLLING = false;
@@ -166,7 +166,17 @@ function init_md() {
     responsive_fontsize();
     $(window).resize(responsive_fontsize);
 
-    // if the line is in a cookie, then we should try to load the current preferences automatically.
+	// generate a unique user id for the sake of keeping track of what lines are requested when, and what was sent
+    var user_id = $.cookie('md_user_id');
+	if (user_id) {
+		USER_ID = user_id;
+	} else {
+		user_id = Math.random().toString(36).replace(/[^a-z]+/g, '') + Math.random().toString(36).replace(/[^a-z]+/g, '');
+		USER_ID = user_id;
+	}
+	$.cookie("md_user_id", USER_ID, {expires: COOKIE_EXPIRY});
+	
+	// if the line is in a cookie, then we should try to load the current preferences automatically.
     var line_cookie = $.cookie('md_line');
     if (line_cookie) {
         EXPLICIT = false;
