@@ -382,7 +382,11 @@ function runs_poll() {
                     
                     var ontime_status = "";
                     if (run.on_time === true) {
-                        ontime_status = "On Time";
+						if (run.en_route === false) {
+							ontime_status = "Scheduled";
+						} else {
+							ontime_status = "On Time";
+						}
                     } else if (run.on_time === false) {
                         ontime_status = "Delayed";
                     } else {
