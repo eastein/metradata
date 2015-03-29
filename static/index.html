@@ -435,7 +435,7 @@ function runs_poll() {
                         suffix = " (" + suffix + ")";
                     }
 
-                    var run_header = 'Train #' + run.train_number.toString() + " Departing at " + dpt_time + suffix;
+                    var run_header = 'Train #' + run.train_number + " at " + dpt_time + suffix;
 
                     runsdiv.append($('<h3>', {text: run_header}));
                     var paramode = $('<p>', {class: 'run_detail'});
