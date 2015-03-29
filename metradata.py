@@ -35,7 +35,7 @@ class Lines(JSONHandler):
 
     @tornado.web.asynchronous
     def get(self):
-        self._wj(200, json.dumps({'data': dict([(l.id, l.name) for l in metra.lines.values()])}))
+        self._wj(200, json.dumps({'data': dict([(l.id, l.todict()) for l in metra.lines.values()])}))
 
 
 class Stations(JSONHandler):
@@ -65,6 +65,8 @@ class Runs(JSONHandler):
             dpt = line.station(dpt_station_id)
             arv = line.station(arv_station_id)
 
+            time_format = "%H:%M";
+
             runs = dpt.runs_to(arv)
             runs_output = list()
             for run in runs:
@@ -78,14 +80,14 @@ class Runs(JSONHandler):
                     'on_time': run.on_time,
                     'state': run.state,
                     'as_of_unixts': non_naive_dt_to_unixts(run.as_of),
-                    'as_of_time': run.as_of.strftime('%H:%M:%S')
+                    'as_of_time': run.as_of.strftime(time_format)
                 }
                 for tt in ['estimated', 'scheduled']:
                     for end in ['dpt', 'arv']:
                         dt = getattr(run, '%s_%s_time' % (tt, end))
                         if dt is not None:
                             r['%s_%s_unixts' % (tt, end)] = non_naive_dt_to_unixts(dt)
-                            r['%s_%s_time' % (tt, end)] = dt.strftime('%H:%M:%S')
+                            r['%s_%s_time' % (tt, end)] = dt.strftime(time_format)
                 if 'md_user_id' in self.cookies :
                     logging.debug('run_trace %s %s %s for user_id=%s - data %s' % (line_id, dpt_station_id, arv_station_id, self.cookies['md_user_id'].value, ','.join(['%s=%s' % (k,repr(v)) for (k,v) in r.items()])))
                 runs_output.append(r)

@@ -17,6 +17,10 @@ html {
     padding: 11px;
 }
 
+a {
+    color: #dedede;
+}
+
 table {
     color: #e8e8e8;
     word-wrap: break-word;
@@ -166,17 +170,17 @@ function init_md() {
     responsive_fontsize();
     $(window).resize(responsive_fontsize);
 
-	// generate a unique user id for the sake of keeping track of what lines are requested when, and what was sent
+    // generate a unique user id for the sake of keeping track of what lines are requested when, and what was sent
     var user_id = $.cookie('md_user_id');
-	if (user_id) {
-		USER_ID = user_id;
-	} else {
-		user_id = Math.random().toString(36).replace(/[^a-z]+/g, '') + Math.random().toString(36).replace(/[^a-z]+/g, '');
-		USER_ID = user_id;
-	}
-	$.cookie("md_user_id", USER_ID, {expires: COOKIE_EXPIRY});
-	
-	// if the line is in a cookie, then we should try to load the current preferences automatically.
+    if (user_id) {
+        USER_ID = user_id;
+    } else {
+        user_id = Math.random().toString(36).replace(/[^a-z]+/g, '') + Math.random().toString(36).replace(/[^a-z]+/g, '');
+        USER_ID = user_id;
+    }
+    $.cookie("md_user_id", USER_ID, {expires: COOKIE_EXPIRY});
+    
+    // if the line is in a cookie, then we should try to load the current preferences automatically.
     var line_cookie = $.cookie('md_line');
     if (line_cookie) {
         EXPLICIT = false;
@@ -205,7 +209,8 @@ function handle_metralines() {
     linesel.empty();
     for (var line_id in METRA_LINES) {
         if (METRA_LINES.hasOwnProperty(line_id)) {
-            linesel.append($('<option>', {value: line_id, text: METRA_LINES[line_id]}));
+            var line = METRA_LINES[line_id];
+            linesel.append($('<option>', {value: line_id, text: line.name}));
         }
     }
     // only show UI that we just built if the user is in control
@@ -369,37 +374,70 @@ function runs_poll() {
             // FIXME distinguish between no trains and error!
             if (data.data && data.data.length > 0) {
                 console.log("Have train runs...");
-                metadiv.append($('<p>', {text: 'Upcoming trains as of ' + data.data[0].as_of_time}))
-                
+                var twitter = METRA_LINES[line_id].twitter;
+                var headline = 'Upcoming trains as of ' + data.data[0].as_of_time + '.';
+                headline += ' See <a href="https://twitter.com/' + twitter + '">@' + twitter + '</a> for advisories.';
+
+                metadiv.append($('<p>', {html: headline}));
                 var runs = data.data;
                 for (var i = 0; i < runs.length; i++) {
                     var run = runs[i];
                     
                     var dpt_time = run.scheduled_dpt_time;
+                    var dpt_unixts = run.scheduled_dpt_unixts;
                     if (run.estimated_dpt_time) {
                         dpt_time = run.estimated_dpt_time;
+                        dpt_unixts = run.estimated_dpt_unixts;
                     }
                     
                     var ontime_status = "";
+                    var do_until = true;
                     if (run.on_time === true) {
-						if (run.en_route === false) {
-							ontime_status = "Scheduled";
-						} else {
-							ontime_status = "On Time";
-						}
+                        if (run.en_route === false) {
+                            ontime_status = "Scheduled";
+                        } else {
+                            ontime_status = "On Time";
+                        }
                     } else if (run.on_time === false) {
                         ontime_status = "Delayed";
                     } else {
-						ontime_status = "Departing";
-					}
-
-
-                    var ontime_suffix = "";
-                    if (ontime_status != "") {
-                        ontime_suffix = " (" + ontime_status + ")";
+                        ontime_status = "Departing";
+                        /* we don't tell the user how long until the train is going to leave
+                         if it's already gone */
+                        do_until = false;
                     }
 
-                    runsdiv.append($('<h3>', {text: 'Train #' + run.train_number.toString() + " Departing @ " + dpt_time + ontime_suffix}));
+                    var suffix = "";
+
+                    if (do_until) {
+                        var until_depart = Math.floor(dpt_unixts - ((new Date()).getTime())/1000);
+                        if (until_depart > 0) {
+                            var until_depart_sec = until_depart % 60;
+                            var until_depart_minpart = (until_depart - until_depart_sec) / 60;
+                            var until_depart_min = until_depart_minpart % 60;
+                            var until_depart_hour = (until_depart_minpart - until_depart_min) / 60;
+                            
+                            var until_text = "in ";
+                            until_text += until_depart_hour + ":";
+                            until_text += ("00" + until_depart_min).substr(-2,2);
+                            
+                            suffix = until_text;
+                        }
+                    }
+                    if (ontime_status != "") {
+                        if (suffix != "") {
+                            suffix += " - ";
+                        }
+                        suffix += ontime_status;
+                    }
+
+                    if (suffix != "") {
+                        suffix = " (" + suffix + ")";
+                    }
+
+                    var run_header = 'Train #' + run.train_number.toString() + " Departing at " + dpt_time + suffix;
+
+                    runsdiv.append($('<h3>', {text: run_header}));
                     var paramode = $('<p>', {class: 'run_detail'});
                     var groupdiv = $('<div>', {class: 'group'});
                     paramode.append(groupdiv);
@@ -482,7 +520,7 @@ function runs_poll() {
 
     <div id="selectstations" class="uimode" style="display: none;">
         <div class="group">
-	
+    
         <div class="left">
         <h1>Depart From</h1>
         <select name="input_dpt_station" id="input_dpt_station"></select>
