@@ -417,10 +417,13 @@ function runs_poll() {
                             var until_depart_min = until_depart_minpart % 60;
                             var until_depart_hour = (until_depart_minpart - until_depart_min) / 60;
                             
-                            var until_text = "in ";
-                            until_text += until_depart_hour + ":";
-                            until_text += ("00" + until_depart_min).substr(-2,2);
-                            
+                            var until_text = "";
+							if ((until_depart_hour == 0) && (until_depart_min == 0)) {
+								until_text = "momentarily";
+							} else {
+								until_text = "in " + until_depart_hour + ":" + ("00" + until_depart_min).substr(-2,2);
+                            }
+
                             suffix = until_text;
                         }
                     }
