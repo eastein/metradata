@@ -1,7 +1,9 @@
 import tornado.web
+import tornado.gen
 import tornado.ioloop
 import json
 import metraapi.metra
+import metraapi.metranado
 import pytz
 import datetime
 
@@ -39,7 +41,7 @@ class Lines(JSONHandler):
 
 class Stations(JSONHandler):
 
-    @tornado.web.asynchronous
+    @tornado.gen.coroutine
     def get(self, line_id):
         line = None
         try:
@@ -48,7 +50,9 @@ class Stations(JSONHandler):
             self._wj(404, json.dumps({'status': 'error', 'message': 'No such line %s' % line_id}))
             return
 
-        self._wj(200, json.dumps({'data': [[s.id, s.name] for s in line.stations]}))
+        stations = yield metraapi.metranado.get_stations_from_line(line_id)
+
+        self._wj(200, json.dumps({'data': [[s['id'], s['name']] for s in stations]}))
 
 
 def non_naive_dt_to_unixts(dt):
