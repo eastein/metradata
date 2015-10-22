@@ -19,7 +19,6 @@ class JSONHandler(tornado.web.RequestHandler):
 
     def _wj(self, status, j):
         self.set_status(status)
-        self.set_header('Access-Control-Allow-Origin', '*')
         self.set_header('Cache-Control', 'no-cache')
         self.set_header('Content-Type', 'application/json')
         self.write(j)
@@ -65,7 +64,7 @@ class Runs(JSONHandler):
             dpt = line.station(dpt_station_id)
             arv = line.station(arv_station_id)
 
-            time_format = "%H:%M";
+            time_format = "%H:%M"
 
             runs = dpt.runs_to(arv)
             runs_output = list()
