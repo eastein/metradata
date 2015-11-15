@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import tornado.web
 import tornado.gen
 import tornado.ioloop
@@ -36,24 +37,27 @@ class Lines(JSONHandler):
 
     @tornado.web.asynchronous
     def get(self):
-        self._wj(200, json.dumps({'data': dict([(l.id, l.todict()) for l in metra.lines.values()])}))
+        self._wj(200, json.dumps({'data': dict([(l.id, l.todict()) for l in list(metra.lines.values())])}))
 
 
 class Stations(JSONHandler):
 
     @tornado.gen.coroutine
     def get(self, line_id):
-        line = None
         try:
-            line = metra.line(line_id)
-        except metraapi.metra.InvalidLineException:
-            self._wj(404, json.dumps({'status': 'error', 'message': 'No such line %s' % line_id}))
-            return
+            line = None
+            try:
+                line = metra.line(line_id)
+            except metraapi.metra.InvalidLineException:
+                self._wj(404, json.dumps({'status': 'error', 'message': 'No such line %s' % line_id}))
+                return
 
-        stations = yield metraapi.metranado.get_stations_from_line(line_id)
+            stations = yield metraapi.metranado.get_stations_from_line(line_id)
 
-        self._wj(200, json.dumps({'data': [[s['id'], s['name']] for s in stations]}))
-
+            self._wj(200, json.dumps({'data': [[s['id'], s['name']] for s in stations]}))
+        except:
+            import traceback
+            traceback.print_tb()
 
 def non_naive_dt_to_unixts(dt):
     return (dt.astimezone(pytz.utc) - pytz.utc.localize(datetime.datetime(1970, 1, 1, 0, 0, 0))).total_seconds()
@@ -92,7 +96,7 @@ class Runs(JSONHandler):
                             r['%s_%s_unixts' % (tt, end)] = non_naive_dt_to_unixts(dt)
                             r['%s_%s_time' % (tt, end)] = dt.strftime(time_format)
                 if 'md_user_id' in self.cookies :
-                    logging.debug('run_trace %s %s %s for user_id=%s - data %s' % (line_id, dpt_station_id, arv_station_id, self.cookies['md_user_id'].value, ','.join(['%s=%s' % (k,repr(v)) for (k,v) in r.items()])))
+                    logging.debug('run_trace %s %s %s for user_id=%s - data %s' % (line_id, dpt_station_id, arv_station_id, self.cookies['md_user_id'].value, ','.join(['%s=%s' % (k,repr(v)) for (k,v) in list(r.items())])))
                 runs_output.append(r)
 
             self._wj(200, json.dumps({'data': runs_output}))
