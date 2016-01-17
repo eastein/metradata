@@ -23,8 +23,8 @@ class JSONHandler(tornado.web.RequestHandler):
 
     def _wj(self, status, j):
         self.set_status(status)
-        self.set_header('Cache-Control', 'no-cache')
         self.set_header('Content-Type', 'application/json')
+        self.set_header('Cache-Control', 'no-cache')
         self.write(j)
         self.finish()
 
@@ -55,6 +55,44 @@ class Stations(JSONHandler):
         stations = yield metraapi.metranado.get_stations_from_line(line_id)
 
         self._wj(200, json.dumps({'data': [[s['id'], s['name']] for s in stations]}))
+
+
+class Station(JSONHandler):
+
+    @tornado.web.asynchronous
+    def get(self, line_id, station_id):
+        line = None
+        try:
+            line = metra.line(line_id)
+        except metraapi.metra.InvalidLineException:
+            self._wj(404, json.dumps({'status': 'error', 'message': 'No such line %s' % line_id}))
+            return
+
+        station = None
+        try:
+            station = line.station(station_id)
+        except metraapi.metra.InvalidStationException:
+            self._wj(404, json.dumps({
+                'status': 'error',
+                'message': 'No such station %s on line %s' % (station_id, line_id)
+            }))
+            return
+
+        station_body = {
+            'station': {
+                'id': station.id,
+                'name': station.name,
+                'line_id': station.line_id,
+                'fare_zone': station.fare_zone,
+                'bike_parking': station.bike_parking,
+                'wheelchair_boarding': station.wheelchair_boarding,
+                'location': station.location,
+                'url': station.url
+            }
+        }
+
+        self._wj(200, json.dumps(station_body))
+        return
 
 
 def non_naive_dt_to_unixts(dt):
@@ -119,6 +157,7 @@ class InterfaceHandler(tornado.web.RequestHandler):
 HANDLER_SET = [
     (r"/api/metra$", Lines),
     (r"/api/metra/([\-A-Z]+)$", Stations),
+    (r"/api/metra/([\-A-Z]+)/([\-A-Z]+)$", Station),
     (r"/api/metra/([\-A-Z]+)/([\.\-A-Z0-9]+)/([\.\-A-Z0-9]+)$", Runs),
     (r"/static/(.*)$", tornado.web.StaticFileHandler, {'path': STATIC_PATH}),
     (r"/$", InterfaceHandler),
